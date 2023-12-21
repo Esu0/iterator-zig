@@ -219,7 +219,8 @@ fn EnumerateInner(comptime I: type, comptime ItemT: type) type {
 }
 
 fn Enumerate(comptime I: type, comptime ItemT: type) type {
-    return Iterator(EnumerateInner(I, ItemT));
+    const InnerT = EnumerateInner(I, ItemT);
+    return IteratorType(InnerT.Item, InnerT, InnerT.next);
 }
 
 // TODO implement fold
