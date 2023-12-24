@@ -34,12 +34,25 @@ pub fn main() !void {
         fn is_odd(x: *const u32) bool {
             return (x.* % 2) == 1;
         }
+
+        fn add(x: u64, y: u64) u64 {
+            return x + y;
+        }
     };
-    var iterator = into_iterator(map.keyIterator()).copied().filter(Functions.is_odd).map(Functions.double).enumerate();
+    var iterator = into_iterator(map.keyIterator())
+        .copied()
+        .filter(Functions.is_odd)
+        .map(Functions.double).enumerate();
+
     while (iterator.next()) |item| {
         std.debug.print("index: {}, value: {}\n", .{ item.index, item.item });
         try testing.expect(@TypeOf(item.index) == usize);
     }
+
+    const sum = into_iterator(map.valueIterator())
+        .copied()
+        .fold(@as(u64, 0), Functions.add);
+    std.debug.print("sum: {}\n", .{ sum });
 }
 
 /// InnerTとTに関係性は必要ない
@@ -78,10 +91,17 @@ fn IteratorType(comptime T: type, comptime InnerT: type, comptime next_fn: fn (*
             return Enumerate(Self, T).init(EnumerateInner(Self, T).init(self));
         }
 
-        // TODO implement fold
-        pub fn fold(self: Self, initial: anytype, comptime f: fn (@TypeOf(initial), T) @TypeOf(initial)) Fold(Self, T, @TypeOf(initial), f) {
-            _ = self;
-            @compileError("Fold not implemented");
+        pub fn fold(
+            self: Self,
+            initial: anytype,
+            comptime f: fn (@TypeOf(initial), T) @TypeOf(initial)
+        ) @TypeOf(initial) {
+            var result = initial;
+            var iterator = self;
+            while (iterator.next()) |item| {
+                result = f(result, item);
+            }
+            return result;
         }
 
         // TODO implement take
@@ -92,7 +112,7 @@ fn IteratorType(comptime T: type, comptime InnerT: type, comptime next_fn: fn (*
         }
 
         // TODO implement take_while
-        pub fn take_while(self: Self, comptime f: fn(*const T) bool) TakeWhile(Self, T, f) {
+        pub fn take_while(self: Self, comptime f: fn (*const T) bool) TakeWhile(Self, T, f) {
             _ = self;
             @compileError("TakeWhile not implemented");
         }
@@ -223,12 +243,6 @@ fn Enumerate(comptime I: type, comptime ItemT: type) type {
     return IteratorType(InnerT.Item, InnerT, InnerT.next);
 }
 
-// TODO implement fold
-fn Fold(comptime I: type, comptime ItemT: type, comptime U: type, comptime f: fn (U, ItemT) U) type {
-    _ = f;
-    _ = I;
-    @compileError("Fold not implemented");
-}
 
 // TODO implement take
 fn Take(comptime I: type, comptime ItemT: type) type {
@@ -238,7 +252,7 @@ fn Take(comptime I: type, comptime ItemT: type) type {
 }
 
 // TODO implement take_while
-fn TakeWhile(comptime I: type, comptime ItemT: type, comptime f: fn(*const ItemT) bool) type {
+fn TakeWhile(comptime I: type, comptime ItemT: type, comptime f: fn (*const ItemT) bool) type {
     _ = I;
     _ = f;
     @compileError("TakeWhile not implemented");
